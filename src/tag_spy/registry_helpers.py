@@ -35,6 +35,10 @@ class ImageTagTriple(NamedTuple):
     date: date
     commit: str
 
+    def __str__(self):
+        """Return a string representation of the tag triple."""
+        return f"{self.base}_{self.date.isoformat()}_{self.commit}"
+
 
 def get_token(parts: SplitResult, image: str, service: str) -> str:
     """
@@ -58,8 +62,10 @@ def get_token(parts: SplitResult, image: str, service: str) -> str:
     logger.debug("Retrieving token at %r.", url)
     request = Request(url)
     with urlopen(request) as response:
-        content = json.load(response)
-    return str(content["access_token"])
+        content = response.read()
+        logger.debug("%s", content)
+    data = json.loads(content)
+    return str(data["access_token"])
 
 
 def verify_v2_capability(parts: SplitResult, headers: Dict[str, str]) -> None:
@@ -107,8 +113,10 @@ def get_tags(parts: SplitResult, headers: Dict[str, str], image: str) -> List[st
     logger.debug("Retrieving image %r tags from %r.", image, url)
     request = Request(url, headers=headers)
     with urlopen(request) as response:
-        content = json.load(response)
-    return [str(t) for t in content["tags"]]
+        content = response.read()
+        logger.debug("%s", content)
+    data = json.loads(content)
+    return [str(t) for t in data["tags"]]
 
 
 def get_image_digest(
@@ -137,8 +145,10 @@ def get_image_digest(
     logger.info("Retrieving image %r digest from %r.", image, url)
     request = Request(url, headers=headers)
     with urlopen(request) as response:
-        content = json.load(response)
-    return str(content["config"]["digest"])
+        content = response.read()
+        logger.debug("%s", content)
+    data = json.loads(content)
+    return str(data["config"]["digest"])
 
 
 def get_image_timestamp(
@@ -173,7 +183,9 @@ def get_image_timestamp(
     """
     url = urlunsplit(parts._replace(path=f"/v2/{image}/blobs/{digest}"))
     logger.info("Retrieving image %r configuration from %r.", image, url)
-    request = Request(urlunsplit(parts), headers=headers)
+    request = Request(url, headers=headers)
     with urlopen(request) as response:
-        content = json.load(response)
-    return datetime.fromisoformat(content["config"]["Labels"][timestamp_label])
+        content = response.read()
+        logger.debug("%s", content)
+    data = json.loads(content)
+    return datetime.fromisoformat(data["config"]["Labels"][timestamp_label])

@@ -88,4 +88,4 @@ def get_latest_tag(
             f"The requested image {image} does not have any tags corresponding to the "
             f"expected format {tag_part}_<date>_<commit>."
         )
-    return f"{latest.base}_{latest.date.isoformat()}_{latest.commit}"
+    return str(latest)

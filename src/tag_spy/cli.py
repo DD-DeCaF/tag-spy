@@ -24,7 +24,6 @@ from .api import get_latest_tag
 
 
 logger = logging.getLogger("tag_spy")
-logging.basicConfig(level="INFO", format="[%(levelname)s] %(message)s")
 
 
 def main() -> None:
@@ -47,5 +46,12 @@ def main() -> None:
         help="The name of the label that contains the build timestamp, for example,"
         " 'com.business.build.timestamp'.",
     )
+    parser.add_argument(
+        "--verbosity",
+        help="The desired log level; either CRITICAL, ERROR, WARNING, INFO, or DEBUG "
+        "(default WARNING).",
+        default="WARNING",
+    )
     args = parser.parse_args()
+    logging.basicConfig(level=args.verbosity, format="[%(levelname)s] %(message)s")
     print(get_latest_tag(args.image, args.tag, args.label))

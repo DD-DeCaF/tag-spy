@@ -94,7 +94,7 @@ def get_latest_by_timestamp(
     """
     latest = []
     for triple in tags:
-        digest = get_image_digest(parts, headers, image, triple.base)
+        digest = get_image_digest(parts, headers, image, str(triple))
         logger.debug("Digest: %s", digest)
         build_timestamp = get_image_timestamp(
             parts, headers, image, digest, timestamp_label
