@@ -18,7 +18,7 @@ branches:
 
 env:
   global:
-  - GITHUB_REPO=dd-decaf/tag-spy
+  - GITHUB_REPO=DD-DeCaF/tag-spy
 
 stages:
 - test
