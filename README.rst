@@ -22,10 +22,6 @@ Docker Tag Spy
    :target: https://travis-ci.org/dd-decaf/tag-spy
    :alt: Travis CI
 
-.. image:: https://ci.appveyor.com/api/projects/status/github/dd-decaf/tag-spy?branch=master&svg=true
-   :target: https://ci.appveyor.com/project/dd-decaf/tag-spy
-   :alt: AppVeyor
-
 .. image:: https://codecov.io/gh/dd-decaf/tag-spy/branch/master/graph/badge.svg
    :target: https://codecov.io/gh/dd-decaf/tag-spy
    :alt: Codecov
