@@ -65,7 +65,7 @@ def get_token(parts: SplitResult, image: str, service: str) -> str:
         content = response.read()
         logger.debug("%s", content)
     data = json.loads(content)
-    return str(data["access_token"])
+    return str(data["token"])
 
 
 def verify_v2_capability(parts: SplitResult, headers: Dict[str, str]) -> None:
