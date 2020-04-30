@@ -20,19 +20,26 @@
 import json
 import logging
 from datetime import datetime
-from typing import Dict, List
+from operator import itemgetter
+from typing import List
 from urllib.parse import SplitResult, urlencode, urlunsplit
-from urllib.request import Request, urlopen
+from urllib.request import OpenerDirector
+
+from .image_tag_triple import ImageTagTriple
 
 
 logger = logging.getLogger(__name__)
 
 
-def get_token(parts: SplitResult, image: str, service: str) -> str:
+def get_token(
+    opener: OpenerDirector, parts: SplitResult, image: str, service: str
+) -> str:
     """
     Return an access token for the requested image and service.
 
     Args:
+        opener (urllib.request.OpenerDirector): The opener with attached handlers and
+            headers for calling the URL.
         parts (urllib.parse.SplitResult): The separate parts of the authentication URL
             as returned by ``urlsplit``.
         image (str): The fully specified image name, for example, 'dddecaf/wsgi-base'.
@@ -48,23 +55,22 @@ def get_token(parts: SplitResult, image: str, service: str) -> str:
     params = {"scope": f"repository:{image}:pull", "service": service}
     url = urlunsplit(parts._replace(query=urlencode(params)))
     logger.debug("Retrieving token at %r.", url)
-    request = Request(url)
-    with urlopen(request) as response:
+    with opener.open(url) as response:
         content = response.read()
         logger.debug("%s", content)
     data = json.loads(content)
     return str(data["token"])
 
 
-def verify_v2_capability(parts: SplitResult, headers: Dict[str, str]) -> None:
+def verify_v2_capability(opener: OpenerDirector, parts: SplitResult) -> None:
     """
     Verify that the registry API actually supports version 2.
 
     Args:
+        opener (urllib.request.OpenerDirector): The opener with attached handlers and
+            headers for calling the URL.
         parts (urllib.parse.SplitResult): The separate parts of the registry API URL
             as returned by ``urlsplit``.
-        headers (dict): A map defining HTTP headers. They must include an 'Accept'
-            header and an 'Authorization' header with a bearer token.
 
     Raises:
         urllib.error.URLError: In case the API does *not* support version 2.
@@ -72,22 +78,22 @@ def verify_v2_capability(parts: SplitResult, headers: Dict[str, str]) -> None:
     """
     url = urlunsplit(parts._replace(path="/v2/"))
     logger.debug("Verifying version 2 API capability at %r.", url)
-    request = Request(url, headers=headers)
     # The following statement will raise an URLError if the API does not support
     # version 2.
-    with urlopen(request) as response:
+    # FIXME: Could be handled more nicely by raising an informative error.
+    with opener.open(url) as response:
         assert response.status == 200
 
 
-def get_tags(parts: SplitResult, headers: Dict[str, str], image: str) -> List[str]:
+def get_tags(opener: OpenerDirector, parts: SplitResult, image: str) -> List[str]:
     """
     Return the list of tags for an image in its registry.
 
     Args:
+        opener (urllib.request.OpenerDirector): The opener with attached handlers and
+            headers for calling the URL.
         parts (urllib.parse.SplitResult): The separate parts of the registry API URL
             as returned by ``urlsplit``.
-        headers (dict): A map defining HTTP headers. They must include an 'Accept'
-            header and an 'Authorization' header with a bearer token.
         image (str): The fully specified image name, for example, 'dddecaf/wsgi-base'.
 
     Returns:
@@ -99,8 +105,7 @@ def get_tags(parts: SplitResult, headers: Dict[str, str], image: str) -> List[st
     """
     url = urlunsplit(parts._replace(path=f"/v2/{image}/tags/list"))
     logger.debug("Retrieving image %r tags from %r.", image, url)
-    request = Request(url, headers=headers)
-    with urlopen(request) as response:
+    with opener.open(url) as response:
         content = response.read()
         logger.debug("%s", content)
     data = json.loads(content)
@@ -108,16 +113,16 @@ def get_tags(parts: SplitResult, headers: Dict[str, str], image: str) -> List[st
 
 
 def get_image_digest(
-    parts: SplitResult, headers: Dict[str, str], image: str, tag: str
+    opener: OpenerDirector, parts: SplitResult, image: str, tag: str
 ) -> str:
     """
     Return an image's digest from its manifest.
 
     Args:
+        opener (urllib.request.OpenerDirector): The opener with attached handlers and
+            headers for calling the URL.
         parts (urllib.parse.SplitResult): The separate parts of the registry API URL
             as returned by ``urlsplit``.
-        headers (dict): A map defining HTTP headers. They must include an 'Accept'
-            header and an 'Authorization' header with a bearer token.
         image (str): The fully specified image name, for example, 'dddecaf/wsgi-base'.
         tag (str): The base part of the tag that you are interested in, for
             example, 'alpine' will match 'dddecaf/wsgi-base:alpine_2020-04-28_24fe0a0'.
@@ -131,8 +136,7 @@ def get_image_digest(
     """
     url = urlunsplit(parts._replace(path=f"/v2/{image}/manifests/{tag}"))
     logger.info("Retrieving image %r digest from %r.", image, url)
-    request = Request(url, headers=headers)
-    with urlopen(request) as response:
+    with opener.open(url) as response:
         content = response.read()
         logger.debug("%s", content)
     data = json.loads(content)
@@ -140,8 +144,8 @@ def get_image_digest(
 
 
 def get_image_timestamp(
+    opener: OpenerDirector,
     parts: SplitResult,
-    headers: Dict[str, str],
     image: str,
     digest: str,
     timestamp_label: str,
@@ -150,10 +154,10 @@ def get_image_timestamp(
     Return an image's build timestamp from its labels.
 
     Args:
+        opener (urllib.request.OpenerDirector): The opener with attached handlers and
+            headers for calling the URL.
         parts (urllib.parse.SplitResult): The separate parts of the registry API URL
             as returned by ``urlsplit``.
-        headers (dict): A map defining HTTP headers. They must include an 'Accept'
-            header and an 'Authorization' header with a bearer token.
         image (str): The fully specified image name, for example, 'dddecaf/wsgi-base'.
         digest (str): An image digest as can be retrieved from its manifest.
         timestamp_label (str): The image label that defines the build timestamp,
@@ -171,9 +175,48 @@ def get_image_timestamp(
     """
     url = urlunsplit(parts._replace(path=f"/v2/{image}/blobs/{digest}"))
     logger.info("Retrieving image %r configuration from %r.", image, url)
-    request = Request(url, headers=headers)
-    with urlopen(request) as response:
+    with opener.open(url) as response:
         content = response.read()
         logger.debug("%s", content)
     data = json.loads(content)
     return datetime.fromisoformat(data["config"]["Labels"][timestamp_label])
+
+
+def get_latest_by_timestamp(
+    opener: OpenerDirector,
+    parts: SplitResult,
+    image: str,
+    timestamp_label: str,
+    tags: List[ImageTagTriple],
+) -> ImageTagTriple:
+    """
+    Return the latest image tag as determined by the build timestamp.
+
+    Args:
+        opener (urllib.request.OpenerDirector): The opener with attached handlers and
+            headers for calling the URL.
+        parts (urllib.parse.SplitResult): The separate parts of the registry API URL
+            as returned by ``urlsplit``.
+        image (str): The fully specified image name, for example, 'dddecaf/wsgi-base'.
+        timestamp_label (str): The image label that defines the build timestamp,
+            for example, 'dk.dtu.biosustain.wsgi-base.alpine.build.timestamp'.
+        tags (list): A collection of ``ImageTagTriple`` that all contain the same date.
+
+    Returns:
+        ImageTagTriple: The latest of the collection.
+
+    Raises:
+        urllib.error.URLError: In case of problems communicating with the registry.
+
+    """
+    latest = []
+    for triple in tags:
+        digest = get_image_digest(opener, parts, image, str(triple))
+        logger.debug("Digest: %s", digest)
+        build_timestamp = get_image_timestamp(
+            opener, parts, image, digest, timestamp_label
+        )
+        logger.debug("%s: %s", timestamp_label, build_timestamp)
+        latest.append((triple, build_timestamp))
+    latest.sort(key=itemgetter(1), reverse=True)
+    return latest[0][0]

@@ -18,10 +18,17 @@
 
 
 import logging
+from typing import Optional
 from urllib.parse import urlsplit
+from urllib.request import HTTPBasicAuthHandler, HTTPPasswordMgr, build_opener
 
-from .filter_helpers import filter_latest_matching, get_latest_by_timestamp
-from .registry_helpers import get_tags, get_token, verify_v2_capability
+from .filter_helpers import filter_latest_matching
+from .registry_helpers import (
+    get_latest_by_timestamp,
+    get_tags,
+    get_token,
+    verify_v2_capability,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -31,9 +38,12 @@ def get_latest_tag(
     image: str,
     tag_part: str,
     label: str,
-    auth_url: str = "https://auth.docker.io/token",
+    authentication_url: str = "https://auth.docker.io/token",
     registry_url: str = "https://registry-1.docker.io",
     service: str = "registry.docker.io",
+    username: Optional[str] = None,
+    password: Optional[str] = None,
+    realm: Optional[str] = None,
 ) -> str:
     """
     Parse the latest DD-DeCaF-specific tag of a Docker image from its registry.
@@ -44,13 +54,20 @@ def get_latest_tag(
             example, 'alpine' will match 'dddecaf/wsgi-base:alpine_2020-04-28_24fe0a0'.
         label (str): The image label that defines the build timestamp, for example,
             'dk.dtu.biosustain.wsgi-base.alpine.build.timestamp'.
-        auth_url (str, optional): The URL from where to retrieve an access token for the
-            registry (the default https://auth.docker.io/token corresponds to
-            Docker Hub).
+        authentication_url (str, optional): The URL from where to retrieve an access
+            token for the registry (the default https://auth.docker.io/token
+            corresponds to Docker Hub).
         registry_url (str, optional): The URL of the registry API
             (default https://registry-1.docker.io).
         service (str, optional): The URL of the service for which to request an access
             token (default registry.docker.io).
+        username (str, optional): A username used for HTTP Basic Authentication when
+            retrieving a bearer token. Without a username no authentication will be
+            attempted.
+        password (str, optional): A password used for HTTP Basic Authentication when
+            retrieving a bearer token.
+        realm (str, optional): The realm to be used for HTTP Basic Authentication if
+            any. It is often the same as the authentication URL.
 
     Returns:
         str: The very latest Docker image tag in its entirety.
@@ -61,15 +78,25 @@ def get_latest_tag(
         urllib.error.URLError: In case of problems communicating with the registry.
 
     """
-    parts = urlsplit(auth_url)
-    token = get_token(parts, image, service)
-    headers = {
-        "Accept": "application/vnd.docker.distribution.manifest.v2+json",
-        "Authorization": f"Bearer {token}",
-    }
+    auth_opener = build_opener()
+    if username is not None:
+        assert password is not None, "HTTP Basic authentication requires a password."
+        assert realm is not None, "HTTP Basic authentication requires a realm."
+        password_manager = HTTPPasswordMgr()
+        password_manager.add_password(realm, registry_url, username, password)
+        auth_handler = HTTPBasicAuthHandler(password_manager)
+        auth_opener.add_handler(auth_handler)
+    token = get_token(auth_opener, urlsplit(authentication_url), image, service)
+    opener = build_opener()
+    opener.addheaders.extend(
+        [
+            ("Accept", "application/vnd.docker.distribution.manifest.v2+json"),
+            ("Authorization", f"Bearer {token}"),
+        ]
+    )
     parts = urlsplit(registry_url)
-    verify_v2_capability(parts, headers)
-    tags = get_tags(parts, headers, image)
+    verify_v2_capability(opener, parts)
+    tags = get_tags(opener, parts, image)
     if len(tags) == 0:
         raise RuntimeError(f"The requested image {image} does not have any tags.")
     try:
@@ -80,7 +107,7 @@ def get_latest_tag(
             f"expected format {tag_part}_<date>_<commit>."
         )
     if len(latest_tags) > 1:
-        latest = get_latest_by_timestamp(parts, headers, image, label, latest_tags)
+        latest = get_latest_by_timestamp(opener, parts, image, label, latest_tags)
     elif len(latest_tags) == 1:
         latest = latest_tags[0]
     else:

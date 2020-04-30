@@ -20,11 +20,9 @@
 import logging
 from itertools import takewhile
 from operator import itemgetter
-from typing import Dict, List
-from urllib.parse import SplitResult
+from typing import List
 
 from .image_tag_triple import ImageTagTriple
-from .registry_helpers import get_image_digest, get_image_timestamp
 
 
 logger = logging.getLogger(__name__)
@@ -61,43 +59,3 @@ def filter_latest_matching(all_tags: List[str], tag_part: str) -> List[ImageTagT
     # Collect all tags created on the latest day.
     latest = tags[0].date
     return list(takewhile(lambda triple: triple.date == latest, tags))
-
-
-def get_latest_by_timestamp(
-    parts: SplitResult,
-    headers: Dict[str, str],
-    image: str,
-    timestamp_label: str,
-    tags: List[ImageTagTriple],
-) -> ImageTagTriple:
-    """
-    Return the latest image tag as determined by the build timestamp.
-
-    Args:
-        parts (urllib.parse.SplitResult): The separate parts of the registry API URL
-            as returned by ``urlsplit``.
-        headers (dict): A map defining HTTP headers. They must include an 'Accept'
-            header and an 'Authorization' header with a bearer token.
-        image (str): The fully specified image name, for example, 'dddecaf/wsgi-base'.
-        timestamp_label (str): The image label that defines the build timestamp,
-            for example, 'dk.dtu.biosustain.wsgi-base.alpine.build.timestamp'.
-        tags (list): A collection of ``ImageTagTriple`` that all contain the same date.
-
-    Returns:
-        ImageTagTriple: The latest of the collection.
-
-    Raises:
-        urllib.error.URLError: In case of problems communicating with the registry.
-
-    """
-    latest = []
-    for triple in tags:
-        digest = get_image_digest(parts, headers, image, str(triple))
-        logger.debug("Digest: %s", digest)
-        build_timestamp = get_image_timestamp(
-            parts, headers, image, digest, timestamp_label
-        )
-        logger.debug("%s: %s", timestamp_label, build_timestamp)
-        latest.append((triple, build_timestamp))
-    latest.sort(key=itemgetter(1), reverse=True)
-    return latest[0][0]
