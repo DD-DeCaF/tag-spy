@@ -19,25 +19,13 @@
 
 import json
 import logging
-from datetime import date, datetime
-from typing import Dict, List, NamedTuple
+from datetime import datetime
+from typing import Dict, List
 from urllib.parse import SplitResult, urlencode, urlunsplit
 from urllib.request import Request, urlopen
 
 
 logger = logging.getLogger(__name__)
-
-
-class ImageTagTriple(NamedTuple):
-    """Define a minimal class for storing complete tag information."""
-
-    base: str
-    date: date
-    commit: str
-
-    def __str__(self):
-        """Return a string representation of the tag triple."""
-        return f"{self.base}_{self.date.isoformat()}_{self.commit}"
 
 
 def get_token(parts: SplitResult, image: str, service: str) -> str:

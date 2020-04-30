@@ -18,13 +18,13 @@
 
 
 import logging
-from datetime import date
 from itertools import takewhile
 from operator import itemgetter
 from typing import Dict, List
 from urllib.parse import SplitResult
 
-from .registry_helpers import ImageTagTriple, get_image_digest, get_image_timestamp
+from .image_tag_triple import ImageTagTriple
+from .registry_helpers import get_image_digest, get_image_timestamp
 
 
 logger = logging.getLogger(__name__)
@@ -49,13 +49,11 @@ def filter_latest_matching(all_tags: List[str], tag_part: str) -> List[ImageTagT
     tags = []
     for tag in all_tags:
         try:
-            base, build_date, build_commit = tag.split("_")
+            triple = ImageTagTriple.from_tag(tag)
         except ValueError:
             continue
-        if base == tag_part:
-            tags.append(
-                ImageTagTriple(base, date.fromisoformat(build_date), build_commit)
-            )
+        if triple.base == tag_part:
+            tags.append(triple)
     if len(tags) == 0:
         raise ValueError("No tags after filtering.")
     # Order tags with the latest date first.
