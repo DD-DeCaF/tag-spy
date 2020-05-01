@@ -20,9 +20,9 @@
 import logging
 from typing import Optional
 from urllib.parse import urlsplit
-from urllib.request import HTTPBasicAuthHandler, HTTPPasswordMgr, build_opener
 
 from .filter_helpers import filter_latest_matching
+from .http_helpers import build_authenticated_opener, build_authentication_opener
 from .registry_helpers import (
     get_latest_by_timestamp,
     get_tags,
@@ -36,21 +36,20 @@ logger = logging.getLogger(__name__)
 
 def get_latest_tag(
     image: str,
-    tag_part: str,
+    base_tag: str,
     label: str,
     authentication_url: str = "https://auth.docker.io/token",
     registry_url: str = "https://registry-1.docker.io",
     service: str = "registry.docker.io",
     username: Optional[str] = None,
     password: Optional[str] = None,
-    realm: Optional[str] = None,
 ) -> str:
     """
     Parse the latest DD-DeCaF-specific tag of a Docker image from its registry.
 
     Args:
         image (str): The fully specified image name, for example, 'dddecaf/wsgi-base'.
-        tag_part (str): The base part of the tag that you are interested in, for
+        base_tag (str): The base part of the tag that you are interested in, for
             example, 'alpine' will match 'dddecaf/wsgi-base:alpine_2020-04-28_24fe0a0'.
         label (str): The image label that defines the build timestamp, for example,
             'dk.dtu.biosustain.wsgi-base.alpine.build.timestamp'.
@@ -59,15 +58,14 @@ def get_latest_tag(
             corresponds to Docker Hub).
         registry_url (str, optional): The URL of the registry API
             (default https://registry-1.docker.io).
-        service (str, optional): The URL of the service for which to request an access
+        service (str, optional): The service URI for which to request an access
             token (default registry.docker.io).
-        username (str, optional): A username used for HTTP Basic Authentication when
-            retrieving a bearer token. Without a username no authentication will be
+        username (str, optional): A username used for authentication when
+            retrieving an access token. Without a username no authentication will be
             attempted.
-        password (str, optional): A password used for HTTP Basic Authentication when
-            retrieving a bearer token.
-        realm (str, optional): The realm to be used for HTTP Basic Authentication if
-            any. It is often the same as the authentication URL.
+        password (str, optional): A password used for authentication when
+            retrieving an access token. The password field may itself be a token for
+            Bearer authentication when the username is 'oauth2accesstoken'.
 
     Returns:
         str: The very latest Docker image tag in its entirety.
@@ -78,33 +76,20 @@ def get_latest_tag(
         urllib.error.URLError: In case of problems communicating with the registry.
 
     """
-    auth_opener = build_opener()
-    if username is not None:
-        assert password is not None, "HTTP Basic authentication requires a password."
-        assert realm is not None, "HTTP Basic authentication requires a realm."
-        password_manager = HTTPPasswordMgr()
-        password_manager.add_password(realm, registry_url, username, password)
-        auth_handler = HTTPBasicAuthHandler(password_manager)
-        auth_opener.add_handler(auth_handler)
+    auth_opener = build_authentication_opener(registry_url, username, password)
     token = get_token(auth_opener, urlsplit(authentication_url), image, service)
-    opener = build_opener()
-    opener.addheaders.extend(
-        [
-            ("Accept", "application/vnd.docker.distribution.manifest.v2+json"),
-            ("Authorization", f"Bearer {token}"),
-        ]
-    )
+    opener = build_authenticated_opener(token)
     parts = urlsplit(registry_url)
     verify_v2_capability(opener, parts)
     tags = get_tags(opener, parts, image)
     if len(tags) == 0:
         raise RuntimeError(f"The requested image {image} does not have any tags.")
     try:
-        latest_tags = filter_latest_matching(tags, tag_part)
+        latest_tags = filter_latest_matching(tags, base_tag)
     except ValueError:
         raise RuntimeError(
             f"The requested image {image} does not have any tags corresponding to the "
-            f"expected format {tag_part}_<date>_<commit>."
+            f"expected format {base_tag}_<date>_<commit>."
         )
     if len(latest_tags) > 1:
         latest = get_latest_by_timestamp(opener, parts, image, label, latest_tags)
@@ -113,6 +98,6 @@ def get_latest_tag(
     else:
         raise RuntimeError(
             f"The requested image {image} does not have any tags corresponding to the "
-            f"expected format {tag_part}_<date>_<commit>."
+            f"expected format {base_tag}_<date>_<commit>."
         )
     return str(latest)

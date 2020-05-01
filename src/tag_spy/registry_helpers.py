@@ -17,14 +17,14 @@
 """Provide helpers that interact with a Docker registry."""
 
 
-import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from operator import itemgetter
 from typing import List
 from urllib.parse import SplitResult, urlencode, urlunsplit
 from urllib.request import OpenerDirector
 
+from .http_helpers import get_response_json
 from .image_tag_triple import ImageTagTriple
 
 
@@ -55,10 +55,7 @@ def get_token(
     params = {"scope": f"repository:{image}:pull", "service": service}
     url = urlunsplit(parts._replace(query=urlencode(params)))
     logger.debug("Retrieving token at %r.", url)
-    with opener.open(url) as response:
-        content = response.read()
-        logger.debug("%s", content)
-    data = json.loads(content)
+    data = get_response_json(opener, url)
     return str(data["token"])
 
 
@@ -105,10 +102,8 @@ def get_tags(opener: OpenerDirector, parts: SplitResult, image: str) -> List[str
     """
     url = urlunsplit(parts._replace(path=f"/v2/{image}/tags/list"))
     logger.debug("Retrieving image %r tags from %r.", image, url)
-    with opener.open(url) as response:
-        content = response.read()
-        logger.debug("%s", content)
-    data = json.loads(content)
+    logger.debug("%r", opener.addheaders)
+    data = get_response_json(opener, url)
     return [str(t) for t in data["tags"]]
 
 
@@ -136,10 +131,7 @@ def get_image_digest(
     """
     url = urlunsplit(parts._replace(path=f"/v2/{image}/manifests/{tag}"))
     logger.info("Retrieving image %r digest from %r.", image, url)
-    with opener.open(url) as response:
-        content = response.read()
-        logger.debug("%s", content)
-    data = json.loads(content)
+    data = get_response_json(opener, url)
     return str(data["config"]["digest"])
 
 
@@ -175,11 +167,18 @@ def get_image_timestamp(
     """
     url = urlunsplit(parts._replace(path=f"/v2/{image}/blobs/{digest}"))
     logger.info("Retrieving image %r configuration from %r.", image, url)
-    with opener.open(url) as response:
-        content = response.read()
-        logger.debug("%s", content)
-    data = json.loads(content)
-    return datetime.fromisoformat(data["config"]["Labels"][timestamp_label])
+    data = get_response_json(opener, url)
+    try:
+        timestamp = datetime.fromisoformat(data["config"]["Labels"][timestamp_label])
+    except KeyError:
+        logger.error(
+            "The requested label '%s' does not exist. Ignoring. "
+            "Possibilities are: %s.",
+            timestamp_label,
+            ", ".join(data["config"]["Labels"].keys()),
+        )
+        timestamp = datetime.fromtimestamp(0, timezone.utc)
+    return timestamp
 
 
 def get_latest_by_timestamp(
