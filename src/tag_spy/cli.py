@@ -20,6 +20,7 @@
 import argparse
 import logging
 import sys
+from getpass import getpass
 from typing import Optional
 
 from . import __version__
@@ -105,7 +106,7 @@ def main() -> None:
     if args.password_stdin:
         password: Optional[str] = sys.stdin.read().rstrip("\r\n")
     else:
-        password = input("Password:") if args.password else None
+        password = getpass() if args.password else None
     print(
         get_latest_tag(
             image=args.image,
