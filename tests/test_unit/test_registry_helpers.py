@@ -17,26 +17,25 @@
 """Test the expected outcomes of helper functions."""
 
 
-from datetime import datetime, timezone
 from typing import Tuple
 
 import pytest
+
+from tag_spy.registry_helpers import parse_iso_8601_timestamp
 
 
 @pytest.mark.parametrize(
     "timestamp, expected",
     [
-        ("2020-04-29T12:14:30+02:00", (2020, 4, 29, 10, 14, 30)),
-        ("2020-04-29T10:14:30+00:00", (2020, 4, 29, 10, 14, 30)),
-        ("2020-04-29T08:14:30-02:00", (2020, 4, 29, 10, 14, 30)),
-        ("2020-04-29T10:14:30Z", (2020, 4, 29, 10, 14, 30)),
+        ("2020-04-29T12:14:30.0+02:00", (2020, 4, 29, 10, 14, 30)),
+        ("2020-04-29T10:14:30.0+00:00", (2020, 4, 29, 10, 14, 30)),
+        ("2020-04-29T08:14:30.0-02:00", (2020, 4, 29, 10, 14, 30)),
+        ("2020-04-29T10:14:30.00Z", (2020, 4, 29, 10, 14, 30)),
+        ("2020-04-29T10:14:30.755675967Z", (2020, 4, 29, 10, 14, 30)),
+        ("2020-04-29T10:14:30.755675967+00:00", (2020, 4, 29, 10, 14, 30)),
+        ("2020-04-29T08:14:30.755675967-02:00", (2020, 4, 29, 10, 14, 30)),
     ],
 )
 def test_timestamp_parsing(timestamp: str, expected: Tuple[int, ...]) -> None:
     """Expect timestamps of the format used in DD-DeCaF to be parsed correctly."""
-    try:
-        time = datetime.fromisoformat(timestamp)
-    except ValueError:
-        time = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%SZ")
-        time.replace(tzinfo=timezone.utc)
-    assert time.utctimetuple()[:6] == expected
+    assert parse_iso_8601_timestamp(timestamp).utctimetuple()[:6] == expected

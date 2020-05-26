@@ -18,6 +18,7 @@
 
 
 import logging
+import re
 from datetime import datetime, timezone
 from operator import itemgetter
 from typing import List
@@ -27,6 +28,18 @@ from .image_tag_triple import ImageTagTriple
 
 
 logger = logging.getLogger(__name__)
+
+
+def parse_iso_8601_timestamp(timestamp: str) -> datetime:
+    """Parse a timestamp in ISO 8601 format to a datetime object."""
+
+    def shorten_to_milliseconds(match: re.Match) -> str:
+        return f"{match.group(1)}{match.group(2)[:6]}{match.group(3)}"
+
+    return datetime.strptime(
+        re.sub(r"([.])(\d*)([Z+-].*)$", shorten_to_milliseconds, timestamp),
+        "%Y-%m-%dT%H:%M:%S.%f%z",
+    )
 
 
 def get_token(client: Client, image: str, service: str) -> str:
@@ -142,16 +155,12 @@ def get_image_creation_timestamp(client: Client, image: str, digest: str,) -> da
     data = client.get(path=f"{image}/blobs/{digest}").json()
     assert isinstance(data, dict)
     try:
-        timestamp = datetime.fromisoformat(data["created"])
-    except ValueError:
-        timestamp = datetime.strptime(data["created"], "%Y-%m-%dT%H:%M:%SZ")
-        timestamp.replace(tzinfo=timezone.utc)
+        return parse_iso_8601_timestamp(data["created"])
     except KeyError:
         logger.error("The 'created' key does not exist. Ignoring this image.")
         # Set the timestamp to the beginning of the epoch so it will never be the
         # latest.
-        timestamp = datetime.fromtimestamp(0, timezone.utc)
-    return timestamp
+        return datetime.fromtimestamp(0, timezone.utc)
 
 
 def get_latest_by_timestamp(
