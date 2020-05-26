@@ -44,12 +44,6 @@ def main() -> None:
         help="The first part of an image tag. So if your tags have the format "
         "'<image>:<base>_<date>_<commit>', you should supply the <base> here.",
     )
-    parser.add_argument(
-        "label",
-        metavar="LABEL",
-        help="The name of the label that contains the build timestamp, for example,"
-        " 'com.business.build.timestamp'.",
-    )
     parser.add_argument("--version", action="version", version=__version__)
     parser.add_argument(
         "--verbosity",
@@ -111,7 +105,6 @@ def main() -> None:
         get_latest_tag(
             image=args.image,
             base_tag=args.tag,
-            label=args.label,
             authentication_url=args.authentication,
             registry_url=args.registry,
             service=args.service,

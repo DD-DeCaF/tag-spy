@@ -38,7 +38,6 @@ logger = logging.getLogger(__name__)
 def get_latest_tag(
     image: str,
     base_tag: str,
-    label: str,
     authentication_url: str = "https://auth.docker.io/token",
     registry_url: str = "https://registry-1.docker.io",
     service: str = "registry.docker.io",
@@ -52,8 +51,6 @@ def get_latest_tag(
         image (str): The fully specified image name, for example, 'dddecaf/wsgi-base'.
         base_tag (str): The base part of the tag that you are interested in, for
             example, 'alpine' will match 'dddecaf/wsgi-base:alpine_2020-04-28_24fe0a0'.
-        label (str): The image label that defines the build timestamp, for example,
-            'dk.dtu.biosustain.wsgi-base.alpine.build.timestamp'.
         authentication_url (str, optional): The URL from where to retrieve an access
             token for the registry (the default https://auth.docker.io/token
             corresponds to Docker Hub).
@@ -99,7 +96,7 @@ def get_latest_tag(
             f"expected format {base_tag}_<date>_<commit>."
         )
     if len(latest_tags) > 1:
-        latest = get_latest_by_timestamp(client, image, label, latest_tags)
+        latest = get_latest_by_timestamp(client, image, latest_tags)
     elif len(latest_tags) == 1:
         latest = latest_tags[0]
     else:
