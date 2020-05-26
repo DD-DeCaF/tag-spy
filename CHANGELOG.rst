@@ -6,6 +6,10 @@ Next Release
 ============
 * Upcoming features and fixes
 
+0.4.1 (2020-05-26)
+==================
+* Fix some problems with timestamp parsing.
+
 0.4.0 (2020-05-26)
 ==================
 * Refactor HTTP requests.
