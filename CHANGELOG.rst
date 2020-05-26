@@ -6,6 +6,11 @@ Next Release
 ============
 * Upcoming features and fixes
 
+0.4.0 (2020-05-26)
+==================
+* Refactor HTTP requests.
+* Read Docker image creation timestamps from metadata rather than a label.
+
 0.3.0 (2020-05-01)
 ==================
 * Enable Basic and Bearer authentication for the token endpoint.
