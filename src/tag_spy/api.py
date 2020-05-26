@@ -19,7 +19,7 @@
 
 import logging
 from typing import Optional
-from urllib.parse import urlsplit
+from urllib.parse import urljoin
 
 from .filter_helpers import filter_latest_matching
 from .http_client import Client
@@ -82,10 +82,13 @@ def get_latest_tag(
         base_url=authentication_url,
     )
     token = get_token(client, image, service)
-    opener = build_authenticated_opener(token)
-    parts = urlsplit(registry_url)
-    verify_v2_capability(opener, parts)
-    tags = get_tags(opener, parts, image)
+    client = Client(
+        opener=build_authenticated_opener(token),
+        # This package is built on version 2 of the Docker registry API.
+        base_url=urljoin(registry_url, "/v2/"),
+    )
+    verify_v2_capability(client)
+    tags = get_tags(client, image)
     if len(tags) == 0:
         raise RuntimeError(f"The requested image {image} does not have any tags.")
     try:
@@ -96,7 +99,7 @@ def get_latest_tag(
             f"expected format {base_tag}_<date>_<commit>."
         )
     if len(latest_tags) > 1:
-        latest = get_latest_by_timestamp(opener, parts, image, label, latest_tags)
+        latest = get_latest_by_timestamp(client, image, label, latest_tags)
     elif len(latest_tags) == 1:
         latest = latest_tags[0]
     else:
