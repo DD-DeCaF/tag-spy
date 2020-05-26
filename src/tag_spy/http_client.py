@@ -54,7 +54,7 @@ class Response:
                 wrapped by this object.
             **kwargs: Passed to parent classes.
         """
-        super().__init__(**kwargs)
+        super().__init__(**kwargs)  # type: ignore
         self._response = response
         # Immediately read the body while the response context is still available.
         self._body = self._content()
@@ -83,7 +83,7 @@ class Response:
         if len(self.body) == 0:
             return ""
         try:
-            return json.loads(self.body)
+            return json.loads(self.body)  # type: ignore
         except json.JSONDecodeError:
             logger.debug(self.body)
             raise
@@ -109,7 +109,7 @@ class Client:
             **kwargs: Passed to parent constructors.
 
         """
-        super().__init__(**kwargs)
+        super().__init__(**kwargs)  # type: ignore
         self._opener = opener
         self._parts = urlsplit(base_url)
 

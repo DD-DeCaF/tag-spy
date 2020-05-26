@@ -46,11 +46,11 @@ def get_token(client: Client, image: str, service: str) -> str:
 
     """
     logger.debug("Retrieving access token for image %r and service %r.", image, service)
-    return str(
-        client.get(
-            params={"scope": f"repository:{image}:pull", "service": service}
-        ).json()["token"]
-    )
+    data = client.get(
+        params={"scope": f"repository:{image}:pull", "service": service}
+    ).json()
+    assert isinstance(data, dict)
+    return str(data["token"])
 
 
 def verify_v2_capability(client: Client) -> None:
@@ -89,7 +89,9 @@ def get_tags(client: Client, image: str) -> List[str]:
 
     """
     logger.debug("Retrieving image %r tags.", image)
-    return [str(t) for t in client.get(path=f"{image}/tags/list").json()["tags"]]
+    data = client.get(path=f"{image}/tags/list").json()
+    assert isinstance(data, dict)
+    return [str(t) for t in data["tags"]]
 
 
 def get_image_digest(client: Client, image: str, tag: str) -> str:
@@ -111,7 +113,9 @@ def get_image_digest(client: Client, image: str, tag: str) -> str:
 
     """
     logger.info("Retrieving image '%s:%s' digest.", image, tag)
-    return str(client.get(path=f"{image}/manifests/{tag}").json()["config"]["digest"])
+    data = client.get(path=f"{image}/manifests/{tag}").json()
+    assert isinstance(data, dict)
+    return str(data["config"]["digest"])
 
 
 def get_image_creation_timestamp(client: Client, image: str, digest: str,) -> datetime:
@@ -136,6 +140,7 @@ def get_image_creation_timestamp(client: Client, image: str, digest: str,) -> da
     """
     logger.info("Retrieving image %r configuration.", image)
     data = client.get(path=f"{image}/blobs/{digest}").json()
+    assert isinstance(data, dict)
     try:
         timestamp = datetime.fromisoformat(data["created"])
     except KeyError:
