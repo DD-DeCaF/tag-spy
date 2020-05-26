@@ -18,9 +18,9 @@ Docker Tag Spy
    :target: https://github.com/dd-decaf/tag-spy/blob/master/.github/CODE_OF_CONDUCT.md
    :alt: Code of Conduct
 
-.. image:: https://img.shields.io/travis/dd-decaf/tag-spy/master.svg?label=Travis%20CI
-   :target: https://travis-ci.org/dd-decaf/tag-spy
-   :alt: Travis CI
+.. image:: https://github.com/DD-DeCaF/tag-spy/workflows/CI/badge.svg
+   :target: https://github.com/DD-DeCaF/tag-spy/workflows/CI
+   :alt: GitHub Actions
 
 .. image:: https://codecov.io/gh/dd-decaf/tag-spy/branch/master/graph/badge.svg
    :target: https://codecov.io/gh/dd-decaf/tag-spy
