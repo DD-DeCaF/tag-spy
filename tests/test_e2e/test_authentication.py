@@ -14,7 +14,7 @@
 # limitations under the License.
 
 
-"""Test that ."""
+"""Test that the HTTP client can properly authenticate a user."""
 
 
 import pytest
@@ -26,7 +26,7 @@ from tag_spy.registry_helpers import get_token
 
 @pytest.mark.parametrize("username, password", [("foo", "bar")])
 def test_basic_authentication(username: str, password: str):
-    """Expect that ."""
+    """Expect that basic authentication is successful."""
     client = Client(
         opener=build_authentication_opener("https://httpbin.org", username, password),
         base_url="https://httpbin.org",
@@ -36,6 +36,7 @@ def test_basic_authentication(username: str, password: str):
 
 
 def test_docker_hub():
+    """Expect that Docker Hub issues an access token without authentication."""
     auth_opener = build_authentication_opener(
         "https://registry-1.docker.io", None, None
     )

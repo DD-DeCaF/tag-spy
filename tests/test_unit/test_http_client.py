@@ -14,33 +14,36 @@
 # limitations under the License.
 
 
-"""Test """
+"""Test the behaviour of the HTTP client."""
 
 
 from typing import Dict, Optional
-from urllib.request import build_opener
+from urllib.request import OpenerDirector, build_opener
 
 import pytest
 
 from tag_spy.http_client import Client
 
 
-@pytest.fixture()
-def client() -> Client:
-    return Client(opener=build_opener(), base_url="https://httpbin.org/")
+@pytest.fixture(scope="function")
+def opener() -> OpenerDirector:
+    """Return an HTTP opener instance."""
+    return build_opener()
 
 
 @pytest.mark.parametrize(
     "path, params, expected",
     [
-        (None, None, "https://httpbin.org/"),
-        ("/gzip", None, "https://httpbin.org/gzip"),
-        ("deflate/this", None, "https://httpbin.org/deflate/this"),
-        (None, {"once": "twice"}, "https://httpbin.org/?once=twice"),
+        (None, None, "https://example.com/"),
+        ("/gzip", None, "https://example.com/gzip"),
+        ("deflate/this", None, "https://example.com/deflate/this"),
+        (None, {"once": "twice"}, "https://example.com/?once=twice"),
+        ("foo", {"once": "twice"}, "https://example.com/foo?once=twice"),
     ],
 )
-def test_from_tag(
-    client, path: Optional[str], params: Optional[Dict[str, str]], expected: str
+def test_client_url_composition(
+    opener, path: Optional[str], params: Optional[Dict[str, str]], expected: str
 ) -> None:
-    """Test that ."""
-    assert client._url(path=path, params=params) == expected
+    """Test that the HTTP client correctly builds URLs."""
+    client = Client(opener=opener, base_url="https://example.com/")
+    assert client._build_url(path=path, params=params) == expected
