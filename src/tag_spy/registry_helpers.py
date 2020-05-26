@@ -143,9 +143,13 @@ def get_image_creation_timestamp(client: Client, image: str, digest: str,) -> da
     assert isinstance(data, dict)
     try:
         timestamp = datetime.fromisoformat(data["created"])
+    except ValueError:
+        timestamp = datetime.strptime(data["created"], "%Y-%m-%dT%H:%M:%SZ")
+        timestamp.replace(tzinfo=timezone.utc)
     except KeyError:
         logger.error("The 'created' key does not exist. Ignoring this image.")
-        # Set the timestamp to the beginning of the epoch.
+        # Set the timestamp to the beginning of the epoch so it will never be the
+        # latest.
         timestamp = datetime.fromtimestamp(0, timezone.utc)
     return timestamp
 
