@@ -21,9 +21,10 @@ import logging
 from datetime import datetime, timezone
 from operator import itemgetter
 from typing import List
-from urllib.parse import SplitResult, urlencode, urlunsplit
+from urllib.parse import SplitResult, urlunsplit
 from urllib.request import OpenerDirector
 
+from .http_client import Client
 from .http_helpers import get_response_json
 from .image_tag_triple import ImageTagTriple
 
@@ -31,17 +32,12 @@ from .image_tag_triple import ImageTagTriple
 logger = logging.getLogger(__name__)
 
 
-def get_token(
-    opener: OpenerDirector, parts: SplitResult, image: str, service: str
-) -> str:
+def get_token(client: Client, image: str, service: str) -> str:
     """
     Return an access token for the requested image and service.
 
     Args:
-        opener (urllib.request.OpenerDirector): The opener with attached handlers and
-            headers for calling the URL.
-        parts (urllib.parse.SplitResult): The separate parts of the authentication URL
-            as returned by ``urlsplit``.
+        client (Client): A client instance pointed at the authentication endpoint.
         image (str): The fully specified image name, for example, 'dddecaf/wsgi-base'.
         service (str): The URL of the service for which to request an access token.
 
@@ -52,11 +48,12 @@ def get_token(
         urllib.error.URLError: In case of problems communicating with the registry.
 
     """
-    params = {"scope": f"repository:{image}:pull", "service": service}
-    url = urlunsplit(parts._replace(query=urlencode(params)))
-    logger.debug("Retrieving token at %r.", url)
-    data = get_response_json(opener, url)
-    return str(data["token"])
+    logger.debug("Retrieving access token for image %r and service %r.", image, service)
+    return str(
+        client.get(
+            params={"scope": f"repository:{image}:pull", "service": service}
+        ).json()["token"]
+    )
 
 
 def verify_v2_capability(opener: OpenerDirector, parts: SplitResult) -> None:

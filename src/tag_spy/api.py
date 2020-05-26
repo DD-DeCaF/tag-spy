@@ -22,6 +22,7 @@ from typing import Optional
 from urllib.parse import urlsplit
 
 from .filter_helpers import filter_latest_matching
+from .http_client import Client
 from .http_helpers import build_authenticated_opener, build_authentication_opener
 from .registry_helpers import (
     get_latest_by_timestamp,
@@ -76,8 +77,11 @@ def get_latest_tag(
         urllib.error.URLError: In case of problems communicating with the registry.
 
     """
-    auth_opener = build_authentication_opener(registry_url, username, password)
-    token = get_token(auth_opener, urlsplit(authentication_url), image, service)
+    client = Client(
+        opener=build_authentication_opener(registry_url, username, password),
+        base_url=authentication_url,
+    )
+    token = get_token(client, image, service)
     opener = build_authenticated_opener(token)
     parts = urlsplit(registry_url)
     verify_v2_capability(opener, parts)
