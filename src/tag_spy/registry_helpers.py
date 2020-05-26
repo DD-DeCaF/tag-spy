@@ -21,11 +21,8 @@ import logging
 from datetime import datetime, timezone
 from operator import itemgetter
 from typing import List
-from urllib.parse import SplitResult, urlunsplit
-from urllib.request import OpenerDirector
 
 from .http_client import Client
-from .http_helpers import get_response_json
 from .image_tag_triple import ImageTagTriple
 
 
@@ -117,9 +114,7 @@ def get_image_digest(client: Client, image: str, tag: str) -> str:
     return str(client.get(path=f"{image}/manifests/{tag}").json()["config"]["digest"])
 
 
-def get_image_creation_timestamp(
-    client: Client, image: str, digest: str,
-) -> datetime:
+def get_image_creation_timestamp(client: Client, image: str, digest: str,) -> datetime:
     """
     Return an image's creation timestamp.
 
@@ -144,9 +139,7 @@ def get_image_creation_timestamp(
     try:
         timestamp = datetime.fromisoformat(data["created"])
     except KeyError:
-        logger.error(
-            "The 'created' key does not exist. Ignoring this image."
-        )
+        logger.error("The 'created' key does not exist. Ignoring this image.")
         # Set the timestamp to the beginning of the epoch.
         timestamp = datetime.fromtimestamp(0, timezone.utc)
     return timestamp

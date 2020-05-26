@@ -31,13 +31,36 @@ logger = logging.getLogger(__name__)
 
 
 class Response:
-    def __init__(self, *, response: HTTPResponse, **kwargs):
-        """"""
+    """
+    Define an HTTP response class.
+
+    This class should not have to be instantiated directly.
+
+    Attributes:
+        status (int): The numeric HTTP status code of the response.
+        body (bytes): The raw body of the response as bytes.
+
+    Methods:
+        json: Deserialize the response's body as JSON and return the object.
+
+    """
+
+    def __init__(self, *, response: HTTPResponse, **kwargs) -> None:
+        """
+        Initialize an HTTP response object.
+
+        Args:
+            response (http.client.HTTPResponse): A standard library response that is
+                wrapped by this object.
+            **kwargs: Passed to parent classes.
+        """
         super().__init__(**kwargs)
         self._response = response
+        # Immediately read the body while the response context is still available.
         self._body = self._content()
 
-    def _content(self):
+    def _content(self) -> bytes:
+        """Return the response body and decompress it if required."""
         if self._response.getheader("Content-Encoding", "").lower() == "gzip":
             return gzip.decompress(self._response.read())
         elif self._response.getheader("Content-Encoding", "").lower() == "deflate":
@@ -46,16 +69,17 @@ class Response:
             return self._response.read()
 
     @property
-    def status(self):
+    def status(self) -> int:
+        """Get the response's HTTP status code."""
         return self._response.status
 
     @property
     def body(self) -> bytes:
-        """"""
+        """Get the response's raw body content as bytes."""
         return self._body
 
     def json(self) -> Union[Dict, List, str]:
-        """"""
+        """Deserialize the response's body as JSON and return the object."""
         if len(self.body) == 0:
             return ""
         try:
@@ -66,22 +90,33 @@ class Response:
 
 
 class Client:
+    """
+    Define an HTTP client for making requests.
+
+    Methods:
+        get: Make an HTTP GET request and return the response.
+
+    """
+
     def __init__(self, *, opener: OpenerDirector, base_url: str, **kwargs) -> None:
         """
+        Initialize an HTTP client with a base URL.
 
         Args:
             opener (urllib.request.OpenerDirector): The opener with attached handlers
                 and headers for calling the URL.
             base_url (str): The base URL for all future requests.
             **kwargs: Passed to parent constructors.
+
         """
         super().__init__(**kwargs)
         self._opener = opener
         self._parts = urlsplit(base_url)
 
-    def _url(
+    def _build_url(
         self, path: Optional[str] = None, params: Optional[Dict[str, str]] = None,
     ) -> str:
+        """Construct a correctly encoded URL from its parts."""
         result = self._parts
         if path is not None:
             result = result._replace(path=urljoin(result.path, path))
@@ -96,17 +131,21 @@ class Client:
         **kwargs,
     ) -> Response:
         """
+        Make an HTTP GET request and return the response.
 
         Args:
-            path:
-            params:
+            path (str, optional): An optional relative or absolute URL path to modify
+                the base URL.
+            params (dict, optional): An optional mapping from query parameter names to
+                their values.
 
         Returns:
+            Response: An HTTP response instance.
 
         """
 
-        logger.debug("Making GET request to %r.", self._url(path, params))
-        with self._opener.open(self._url(path, params), **kwargs) as response:
+        logger.debug("Making GET request to %r.", self._build_url(path, params))
+        with self._opener.open(self._build_url(path, params), **kwargs) as response:
             logger.debug("%d %s", response.status, response.reason)
             logger.debug("%r", response.getheaders())
             # Must be returned within the context such that the response body is
