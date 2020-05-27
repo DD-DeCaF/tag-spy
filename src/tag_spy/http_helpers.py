@@ -16,15 +16,13 @@
 
 """Provide helpers that interact with a Docker registry."""
 
-import gzip
-import json
+
 import logging
-from typing import Optional, Union
+from typing import Optional
 from urllib.request import (
     HTTPBasicAuthHandler,
     HTTPPasswordMgrWithDefaultRealm,
     OpenerDirector,
-    Request,
     build_opener,
 )
 
@@ -96,33 +94,3 @@ def build_authenticated_opener(token: str,) -> OpenerDirector:
         ]
     )
     return opener
-
-
-def get_response_json(opener: OpenerDirector, url: Union[str, Request]) -> dict:
-    """
-    Perform an HTTP request and return the body deserialized as JSON.
-
-    Args:
-        opener (OpenerDirector): The director that executes the request.
-        url (str or urllib.request.Request): The URL to open.
-
-    Returns:
-        dict: The JSON body as a dict object.
-
-    Raises:
-        urllib.error.HTTPError: In case there is a problem in HTTP communication.
-        json.JSONDecodeError: In case the response body can not be deserialized.
-
-    """
-    with opener.open(url) as response:
-        logger.debug("%d %s", response.status, response.reason)
-        logger.debug("%r", response.getheaders())
-        content = response.read()
-        if response.getheader("Content-Encoding", "").lower() == "gzip":
-            content = gzip.decompress(content)
-    try:
-        data = json.loads(content)
-    except json.JSONDecodeError:
-        logger.debug(content)
-        raise
-    return dict(data)
