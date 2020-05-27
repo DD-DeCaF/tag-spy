@@ -20,26 +20,25 @@
 import pytest
 
 from tag_spy.http_client import Client
-from tag_spy.http_helpers import build_authentication_opener
+from tag_spy.opener_factory import basic_authentication_opener_factory, opener_factory
 from tag_spy.registry_helpers import get_token
 
 
 @pytest.mark.parametrize("username, password", [("foo", "bar")])
-def test_basic_authentication(username: str, password: str):
-    """Expect that basic authentication is successful."""
+def test_httpbin_basic_authentication(username: str, password: str):
+    """Expect that basic authentication is successful on httpbin.org."""
     client = Client(
-        opener=build_authentication_opener("https://httpbin.org", username, password),
+        opener=basic_authentication_opener_factory(
+            "https://httpbin.org", username, password
+        ),
         base_url="https://httpbin.org",
     )
     response = client.get(path=f"/basic-auth/{username}/{password}")
     assert response.status == 200
 
 
-def test_docker_hub():
+def test_docker_hub_public():
     """Expect that Docker Hub issues an access token without authentication."""
-    auth_opener = build_authentication_opener(
-        "https://registry-1.docker.io", None, None
-    )
-    client = Client(opener=auth_opener, base_url="https://auth.docker.io/token")
+    client = Client(opener=opener_factory(), base_url="https://auth.docker.io/token")
     token = get_token(client, "dddecaf/wsgi-base", "registry.docker.io")
     assert len(token) > 0

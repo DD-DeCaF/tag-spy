@@ -22,6 +22,7 @@ import logging
 import sys
 from getpass import getpass
 from typing import Optional
+from urllib.error import HTTPError
 
 from . import __version__
 from .api import get_latest_tag
@@ -30,8 +31,8 @@ from .api import get_latest_tag
 logger = logging.getLogger("tag_spy")
 
 
-def main() -> None:
-    """Define the console script entry point and thus the command line interface."""
+def parse_arguments():
+    """Parse all command line arguments."""
     parser = argparse.ArgumentParser(description="Find the latest Docker image tag.")
     parser.add_argument(
         "image",
@@ -101,14 +102,28 @@ def main() -> None:
         password: Optional[str] = sys.stdin.read().rstrip("\r\n")
     else:
         password = getpass() if args.password else None
-    print(
-        get_latest_tag(
-            image=args.image,
-            base_tag=args.tag,
-            authentication_url=args.authentication,
-            registry_url=args.registry,
-            service=args.service,
-            username=args.username,
-            password=password,
+    args.password = password
+    return args
+
+
+def main() -> None:
+    """Define the console script entry point and thus the command line interface."""
+    args = parse_arguments()
+    try:
+        print(
+            get_latest_tag(
+                image=args.image,
+                base_tag=args.tag,
+                authentication_url=args.authentication,
+                registry_url=args.registry,
+                service=args.service,
+                username=args.username,
+                password=args.password,
+            )
         )
-    )
+    except HTTPError as error:
+        logger.debug("", exc_info=error)
+        logger.debug("%r", error.geturl())
+        logger.debug("%d %s", error.status, error.reason)  # type: ignore
+        logger.debug("HTTP Headers\n%s", error.info())
+        logger.critical(str(error))

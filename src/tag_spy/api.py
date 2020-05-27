@@ -19,17 +19,10 @@
 
 import logging
 from typing import Optional
-from urllib.parse import urljoin
 
+from .client_factory import authenticated_client_factory
 from .filter_helpers import filter_latest_matching
-from .http_client import Client
-from .http_helpers import build_authenticated_opener, build_authentication_opener
-from .registry_helpers import (
-    get_latest_by_timestamp,
-    get_tags,
-    get_token,
-    verify_v2_capability,
-)
+from .registry_helpers import get_latest_by_timestamp, get_tags, verify_v2_capability
 
 
 logger = logging.getLogger(__name__)
@@ -74,15 +67,8 @@ def get_latest_tag(
         urllib.error.URLError: In case of problems communicating with the registry.
 
     """
-    client = Client(
-        opener=build_authentication_opener(registry_url, username, password),
-        base_url=authentication_url,
-    )
-    token = get_token(client, image, service)
-    client = Client(
-        opener=build_authenticated_opener(token),
-        # This package is built on version 2 of the Docker registry API.
-        base_url=urljoin(registry_url, "/v2/"),
+    client = authenticated_client_factory(
+        registry_url, authentication_url, image, service, username, password
     )
     verify_v2_capability(client)
     tags = get_tags(client, image)

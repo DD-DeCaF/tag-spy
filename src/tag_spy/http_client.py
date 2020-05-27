@@ -146,8 +146,9 @@ class Client:
 
         logger.debug("Making GET request to %r.", self._build_url(path, params))
         with self._opener.open(self._build_url(path, params), **kwargs) as response:
+            logger.debug("%r", response.geturl())
             logger.debug("%d %s", response.status, response.reason)
-            logger.debug("%r", response.getheaders())
+            logger.debug("HTTP Headers\n%s", response.info())
             # Must be returned within the context such that the response body is
             # available for reading.
             return Response(response=response)
