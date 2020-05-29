@@ -46,4 +46,4 @@ def test_client_url_composition(
 ) -> None:
     """Test that the HTTP client correctly builds URLs."""
     client = Client(opener=opener, base_url="https://example.com/")
-    assert client._build_url(path=path, params=params) == expected
+    assert client._build_request(path=path, params=params).full_url == expected

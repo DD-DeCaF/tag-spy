@@ -24,7 +24,7 @@ import zlib
 from http.client import HTTPResponse
 from typing import Dict, List, Optional, Union
 from urllib.parse import urlencode, urljoin, urlsplit, urlunsplit
-from urllib.request import OpenerDirector
+from urllib.request import OpenerDirector, Request
 
 
 logger = logging.getLogger(__name__)
@@ -98,7 +98,14 @@ class Client:
 
     """
 
-    def __init__(self, *, opener: OpenerDirector, base_url: str, **kwargs) -> None:
+    def __init__(
+        self,
+        *,
+        opener: OpenerDirector,
+        base_url: str,
+        token: Optional[str] = None,
+        **kwargs,
+    ) -> None:
         """
         Initialize an HTTP client with a base URL.
 
@@ -106,23 +113,28 @@ class Client:
             opener (urllib.request.OpenerDirector): The opener with attached handlers
                 and headers for calling the URL.
             base_url (str): The base URL for all future requests.
+            token (str, optional): A bearer access token.
             **kwargs: Passed to parent constructors.
 
         """
         super().__init__(**kwargs)  # type: ignore
         self._opener = opener
         self._parts = urlsplit(base_url)
+        self.token = token
 
-    def _build_url(
+    def _build_request(
         self, path: Optional[str] = None, params: Optional[Dict[str, str]] = None,
-    ) -> str:
+    ) -> Request:
         """Construct a correctly encoded URL from its parts."""
-        result = self._parts
+        url = self._parts
         if path is not None:
-            result = result._replace(path=urljoin(result.path, path))
+            url = url._replace(path=urljoin(url.path, path))
         if params is not None:
-            result = result._replace(query=urlencode(params))
-        return urlunsplit(result)
+            url = url._replace(query=urlencode(params))
+        request = Request(urlunsplit(url))
+        if self.token:
+            request.add_unredirected_header("Authorization", f"Bearer {self.token}")
+        return request
 
     def get(
         self,
@@ -144,8 +156,8 @@ class Client:
 
         """
 
-        logger.debug("Making GET request to %r.", self._build_url(path, params))
-        with self._opener.open(self._build_url(path, params), **kwargs) as response:
+        logger.debug("Making GET request to %r.", self._build_request(path, params))
+        with self._opener.open(self._build_request(path, params), **kwargs) as response:
             logger.debug("%r", response.geturl())
             logger.debug("%d %s", response.status, response.reason)
             logger.debug("HTTP Headers\n%s", response.info())

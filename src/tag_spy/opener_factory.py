@@ -68,21 +68,3 @@ def basic_authentication_opener_factory(
     )
     opener.add_handler(HTTPBasicAuthHandler(password_manager))
     return opener
-
-
-def bearer_authorization_opener_factory(token: str) -> OpenerDirector:
-    """
-    Return an opener director that authenticates requests with a Bearer token.
-
-    Args:
-        token (str): The access token.
-
-    Returns:
-        OpenerDirector: A director for making HTTP requests. It's main method is `open`.
-
-    """
-    opener = opener_factory()
-    # The standard library urllib.request has no HTTPBearerAuthHandler, thus we
-    # create a corresponding header ourselves.
-    opener.addheaders.append(("Authorization", f"Bearer {token}"))
-    return opener

@@ -22,11 +22,7 @@ from typing import Optional
 from urllib.parse import urljoin
 
 from .http_client import Client
-from .opener_factory import (
-    basic_authentication_opener_factory,
-    bearer_authorization_opener_factory,
-    opener_factory,
-)
+from .opener_factory import basic_authentication_opener_factory, opener_factory
 from .registry_helpers import get_token
 
 
@@ -68,8 +64,7 @@ def authenticated_client_factory(
             logger.debug("Retrieving access token using Bearer authentication.")
             token = get_token(
                 Client(
-                    opener=bearer_authorization_opener_factory(password),
-                    base_url=authentication_url,
+                    opener=opener_factory(), base_url=authentication_url, token=password
                 ),
                 image,
                 service,
@@ -92,7 +87,8 @@ def authenticated_client_factory(
             Client(opener=opener_factory(), base_url=authentication_url), image, service
         )
     return Client(
-        opener=bearer_authorization_opener_factory(token),
+        opener=opener_factory(),
         # This package is built on version 2 of the Docker registry API.
         base_url=urljoin(registry_url, "/v2/"),
+        token=token,
     )
